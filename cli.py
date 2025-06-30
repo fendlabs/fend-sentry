@@ -346,8 +346,8 @@ Type 'exit' or 'quit' to end the session.
                     break
                 
                 with console.status("🤔 Analyzing..."):
-                    # Create a chat-focused prompt
-                    response = analyzer.chat_about_logs(parsed_logs, question, config_data['app']['name'])
+                    # Create a chat-focused prompt with full log context
+                    response = analyzer.chat_about_logs(parsed_logs, question, config_data['app']['name'], log_data)
                 
                 console.print(f"\n[dim]💬[/dim] {response}")
                 

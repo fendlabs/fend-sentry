@@ -306,31 +306,41 @@ Respond ONLY with valid JSON, no additional text."""
             'analysis_coverage': f"{parsed_logs.get('total_entries', 0)} log entries analyzed"
         }
     
-    def chat_about_logs(self, parsed_logs: Dict[str, Any], question: str, app_name: str) -> str:
+    def chat_about_logs(self, parsed_logs: Dict[str, Any], question: str, app_name: str, raw_logs: List[str] = None) -> str:
         """Interactive chat about logs
         
         Args:
             parsed_logs: Dictionary from LogParser.parse_logs()
             question: User's question about the logs
             app_name: Name of the Django application
+            raw_logs: Raw log lines for full context
             
         Returns:
             AI response to the question
         """
         try:
-            # Create log context for the question
+            # Include both parsed summary and raw logs for full context
             log_summary = self._create_log_summary(parsed_logs)
+            
+            # Add raw logs for complete context (limited to last 50 lines to avoid token limits)
+            raw_log_context = ""
+            if raw_logs:
+                recent_logs = raw_logs[-50:] if len(raw_logs) > 50 else raw_logs
+                raw_log_context = f"""
+
+RAW LOG ENTRIES (most recent):
+{chr(10).join(recent_logs)}"""
             
             prompt = f"""You are a senior systems monitoring engineer analyzing logs from "{app_name}".
 
-LOG DATA:
-{json.dumps(log_summary, indent=2)}
+PARSED DATA:
+{json.dumps(log_summary, indent=2)}{raw_log_context}
 
 QUESTION: {question}
 
 Respond as an expert engineer would - concise, technical, and actionable. Rules:
 - Keep responses under 3 sentences unless asked for details
-- Reference specific log data when relevant  
+- Reference specific log entries when relevant  
 - Give direct answers, not explanations
 - Suggest specific fixes, not general advice
 - Use technical terms appropriately
