@@ -118,31 +118,32 @@ class Config:
             raise ConfigError("Configuration must be a dictionary")
         
         # Required top-level keys
-        required_keys = ['server', 'app', 'ai']
+        required_keys = ['app', 'ai']  # server is optional for local mode
         for key in required_keys:
             if key not in config_data:
                 raise ConfigError(f"Missing required configuration section: {key}")
         
-        # Validate server section
-        server = config_data['server']
-        required_server_keys = ['host', 'port', 'username']
-        for key in required_server_keys:
-            if key not in server:
-                raise ConfigError(f"Missing required server configuration: {key}")
-        
-        # Must have either private_key_path or password
-        if not server.get('private_key_path') and not server.get('password'):
-            raise ConfigError("Must specify either private_key_path or password for SSH")
-        
-        # Validate SSH key path exists if specified (and not using password)
-        if server.get('private_key_path') and not server.get('password'):
-            key_path = Path(server['private_key_path']).expanduser()
-            if not key_path.exists():
-                # Don't fail if this is just the default key path - user might use password
-                if server['private_key_path'] != str(Path.home() / '.ssh' / 'id_rsa'):
-                    raise ConfigError(f"SSH private key not found: {server['private_key_path']}")
-                # For default key path, just warn and switch to password auth requirement
-                server['private_key_path'] = None
+        # Validate server section (optional for local mode)
+        if 'server' in config_data:
+            server = config_data['server']
+            required_server_keys = ['host', 'port', 'username']
+            for key in required_server_keys:
+                if key not in server:
+                    raise ConfigError(f"Missing required server configuration: {key}")
+            
+            # Must have either private_key_path or password
+            if not server.get('private_key_path') and not server.get('password'):
+                raise ConfigError("Must specify either private_key_path or password for SSH")
+            
+            # Validate SSH key path exists if specified (and not using password)
+            if server.get('private_key_path') and not server.get('password'):
+                key_path = Path(server['private_key_path']).expanduser()
+                if not key_path.exists():
+                    # Don't fail if this is just the default key path - user might use password
+                    if server['private_key_path'] != str(Path.home() / '.ssh' / 'id_rsa'):
+                        raise ConfigError(f"SSH private key not found: {server['private_key_path']}")
+                    # For default key path, just warn and switch to password auth requirement
+                    server['private_key_path'] = None
         
         # Validate app section
         app = config_data['app']

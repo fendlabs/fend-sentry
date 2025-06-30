@@ -146,7 +146,7 @@ class RemoteConnection:
         """Read recent lines from a log file
         
         Args:
-            file_path: Path to log file on remote server
+            file_path: Path to log file on remote server, or docker:container_name for container logs
             lines: Number of recent lines to read (default 1000)
             
         Returns:
@@ -159,8 +159,18 @@ class RemoteConnection:
             raise ConnectionError("Not connected to server")
         
         try:
-            # Use tail command to get recent lines efficiently
-            command = f"tail -n {lines} '{file_path}' 2>/dev/null || echo 'FILE_NOT_FOUND'"
+            # Check if this is a Docker container log request
+            if file_path.startswith('docker:'):
+                container_name = file_path.replace('docker:', '')
+                command = f"docker logs --tail {lines} {container_name} 2>&1"
+            else:
+                # Check if file is in Docker container
+                if file_path.startswith('/app/'):
+                    # Try to read from Docker container first
+                    command = f"docker exec fend-marketplace-web-1 tail -n {lines} '{file_path}' 2>/dev/null || tail -n {lines} '{file_path}' 2>/dev/null || echo 'FILE_NOT_FOUND'"
+                else:
+                    # Regular file on host
+                    command = f"tail -n {lines} '{file_path}' 2>/dev/null || echo 'FILE_NOT_FOUND'"
             
             stdin, stdout, stderr = self.client.exec_command(command)
             

@@ -1,0 +1,26 @@
+[2024-06-30 17:20:01,123] ERROR django.request: Internal Server Error: /api/payments/create/
+Traceback (most recent call last):
+  File "/app/payments/views.py", line 45, in process_payment
+    result = stripe.charge.create(amount=amount)
+ConnectionError: Could not connect to Stripe API
+
+[2024-06-30 17:21:15,456] WARNING django.security: Suspicious operation: Invalid session key from 192.168.1.100
+[2024-06-30 17:21:20,789] INFO django.request: GET /health/ 200 [0.01, 127.0.0.1]
+[2024-06-30 17:22:01,111] ERROR django.db.backends: Database connection lost
+Traceback (most recent call last):
+  File "/app/models.py", line 123, in save
+    super().save(*args, **kwargs)
+OperationalError: (2006, 'MySQL server has gone away')
+
+[2024-06-30 17:23:10,333] INFO django.request: POST /api/users/register/ 201 [0.15, 192.168.1.50]
+[2024-06-30 17:24:01,555] ERROR django.request: Internal Server Error: /api/payments/create/
+ConnectionError: Could not connect to Stripe API
+
+[2024-06-30 17:25:30,777] WARNING django.request: Not Found: /favicon.ico
+[2024-06-30 17:26:45,888] ERROR django.security.csrf: CSRF verification failed. Request aborted.
+[2024-06-30 17:27:12,999] INFO django.request: GET /admin/ 302 [0.02, 10.0.0.1]
+[2024-06-30 17:28:05,111] ERROR django.request: Internal Server Error: /api/marketplace/listings/
+Traceback (most recent call last):
+  File "/app/marketplace/views.py", line 67, in get_listings
+    listings = Listing.objects.filter(active=True)
+AttributeError: 'NoneType' object has no attribute 'objects'

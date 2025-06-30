@@ -13,12 +13,16 @@ from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from dotenv import load_dotenv
 
 from config import Config, ConfigError
 from remote import RemoteConnection, ConnectionError
 from parser import LogParser
 from analyzer import AIAnalyzer
 from reporter import HealthReporter
+
+# Load environment variables
+load_dotenv()
 
 console = Console()
 
@@ -50,146 +54,89 @@ def main(ctx):
         """, title="Welcome", border_style="blue"))
 
 @main.command()
-@click.option('--skip-prompts', is_flag=True, help='Use environment variables and defaults')
-def init(skip_prompts):
-    """🔧 Interactive setup wizard"""
+def init():
+    """🔧 Quick setup - just 2 questions!"""
     try:
-        config = Config()
-        
         console.print(Panel.fit("""
-[bold blue]🔧 Fend Sentry Setup[/bold blue]
+[bold blue]🚀 Fend Sentry Setup[/bold blue]
 
-Let's configure your Django monitoring setup.
-[dim]Environment variables will be used as defaults when available.[/dim]
+Let's get you monitoring in 30 seconds!
         """, border_style="blue"))
         
-        # Get environment defaults
-        env_defaults = config.get_env_defaults()
-        
-        if skip_prompts:
-            console.print("📋 [cyan]Using environment variables and defaults...[/cyan]")
-            config_data = env_defaults
+        # 1. Get API key
+        gemini_key = os.getenv('GEMINI_API_KEY', '')
+        if not gemini_key:
+            console.print("\n[cyan]First, we need your Gemini API key for AI analysis.[/cyan]")
+            console.print("[dim]Get one free at: https://makersuite.google.com/app/apikey[/dim]")
+            gemini_key = click.prompt("🤖 Gemini API key", hide_input=True)
         else:
-            # Server configuration
-            console.print("\n[bold cyan]📡 Server Configuration[/bold cyan]")
-            server_host = click.prompt(
-                "🌐 Server hostname or IP", 
-                default=env_defaults['server']['host']
-            )
-            server_port = click.prompt(
-                "🔌 SSH port", 
-                default=env_defaults['server']['port'], 
-                type=int
-            )
-            username = click.prompt(
-                "👤 SSH username", 
-                default=env_defaults['server']['username']
-            )
-            
-            # SSH authentication
-            auth_method = click.prompt(
-                "🔐 Authentication method", 
-                type=click.Choice(['key', 'password']), 
-                default='key' if not env_defaults['server']['password'] else 'password'
-            )
-            
-            if auth_method == 'key':
-                private_key_path = click.prompt(
-                    "🔑 SSH private key path", 
-                    default=env_defaults['server']['private_key_path']
-                )
-                password = None
-            else:
-                private_key_path = None
-                password = click.prompt("🔒 SSH password", hide_input=True)
-            
-            # Application configuration
-            console.print("\n[bold cyan]🏗️  Application Configuration[/bold cyan]")
-            app_name = click.prompt(
-                "🏷️  Application name", 
-                default=env_defaults['app']['name']
-            )
-            log_path = click.prompt(
-                "📁 Django log file path on server", 
-                default=env_defaults['app']['log_path']
-            )
-            app_env = click.prompt(
-                "🌍 Environment (prod/staging/dev)", 
-                default=env_defaults['app']['environment']
-            )
-            
-            # AI configuration
-            console.print("\n[bold cyan]🤖 AI Configuration[/bold cyan]")
-            gemini_key = env_defaults['ai']['gemini_api_key']
-            if not gemini_key:
-                gemini_key = click.prompt("🔑 Gemini API key", hide_input=True)
-            else:
-                console.print(f"✅ Using Gemini API key from environment")
-            
-            # Monitoring configuration
-            console.print("\n[bold cyan]📊 Monitoring Configuration[/bold cyan]")
-            check_interval = click.prompt(
-                "⏱️  Check interval (seconds)", 
-                default=env_defaults['monitoring']['check_interval'],
-                type=int
-            )
-            max_log_lines = click.prompt(
-                "📄 Max log lines to analyze", 
-                default=env_defaults['monitoring']['max_log_lines'],
-                type=int
-            )
-            
-            # Alert configuration (optional)
-            console.print("\n[bold cyan]🚨 Alert Configuration (Optional)[/bold cyan]")
-            alert_email = click.prompt(
-                "📧 Alert email", 
-                default=env_defaults['alerts']['email'],
-                show_default=False
-            ) or ""
-            
-            webhook_url = click.prompt(
-                "🪝 Webhook URL (Slack/Discord)", 
-                default=env_defaults['alerts']['webhook_url'],
-                show_default=False
-            ) or ""
-            
-            # Build configuration
-            config_data = {
-                'server': {
-                    'host': server_host,
-                    'port': server_port,
-                    'username': username,
-                    'private_key_path': private_key_path,
-                    'password': password
-                },
-                'app': {
-                    'name': app_name,
-                    'log_path': log_path,
-                    'environment': app_env
-                },
-                'ai': {
-                    'gemini_api_key': gemini_key
-                },
-                'monitoring': {
-                    'check_interval': check_interval,
-                    'max_log_lines': max_log_lines
-                },
-                'alerts': {
-                    'email': alert_email,
-                    'webhook_url': webhook_url,
-                    'enabled': bool(alert_email or webhook_url)
-                }
-            }
+            console.print("\n✅ [green]Found Gemini API key in environment[/green]")
         
-        # Save configuration
+        # 2. Auto-detect Django logs
+        console.print("\n[cyan]Now let's find your Django logs...[/cyan]")
+        
+        # Common Django log locations
+        possible_paths = [
+            "/var/log/django/django.log",
+            "/var/log/django/error.log", 
+            "/app/logs/django.log",
+            "/app/logs/error.log",
+            "./logs/django.log",
+            "./django.log",
+            "/home/ubuntu/logs/django.log",
+            "/opt/django/logs/django.log",
+            "./test_logs.txt"  # Our test file
+        ]
+        
+        found_logs = []
+        for path in possible_paths:
+            if os.path.exists(path):
+                found_logs.append(path)
+        
+        if found_logs:
+            console.print(f"\n🎯 [green]Found Django logs![/green]")
+            for i, path in enumerate(found_logs, 1):
+                console.print(f"  {i}. {path}")
+            
+            if len(found_logs) == 1:
+                log_path = found_logs[0]
+                console.print(f"✅ Using: {log_path}")
+            else:
+                choice = click.prompt(f"📁 Which log file? (1-{len(found_logs)})", type=int) - 1
+                log_path = found_logs[choice]
+        else:
+            console.print("🔍 [yellow]No logs found in common locations[/yellow]")
+            log_path = click.prompt("📁 Django log file path")
+        
+        # 3. Auto-detect app name from directory or ask
+        app_name = os.path.basename(os.getcwd())
+        if not app_name or app_name in ['root', 'home']:
+            app_name = click.prompt("🏷️  App name", default="Django App")
+        else:
+            console.print(f"📱 App name: {app_name}")
+        
+        # Build minimal config
+        config_data = {
+            'app': {
+                'name': app_name,
+                'log_path': log_path,
+                'environment': 'production'
+            },
+            'ai': {
+                'gemini_api_key': gemini_key
+            },
+            'monitoring': {
+                'check_interval': 300,
+                'max_log_lines': 1000
+            }
+        }
+        
+        # Save it
+        config = Config()
         config.save(config_data)
         
-        console.print("\n✅ [green]Configuration saved successfully![/green]")
-        console.print("🚀 Run [cyan]fend-sentry check[/cyan] to test your setup")
-        
-        # Show summary
-        console.print(f"\n📋 [dim]Monitoring: {config_data['app']['name']} ({config_data['app']['environment']})[/dim]")
-        console.print(f"🔄 [dim]Check interval: {config_data['monitoring']['check_interval']} seconds[/dim]")
+        console.print("\n🎉 [bold green]Ready to go![/bold green]")
+        console.print("✨ Run [cyan]fend-sentry check[/cyan] to see your app's health")
         
     except (KeyboardInterrupt, click.Abort):
         console.print("\n❌ Setup cancelled")
@@ -215,7 +162,6 @@ def check(verbose):
         
         # Initialize components
         reporter = HealthReporter(console, verbose=verbose)
-        remote = RemoteConnection(config_data['server'])
         parser = LogParser()
         analyzer = AIAnalyzer(config_data['ai']['gemini_api_key'])
         
@@ -223,17 +169,35 @@ def check(verbose):
         app_display = f"{config_data['app']['name']} ({config_data['app']['environment']})"
         reporter.show_startup(app_display)
         
-        # Connect to server
-        with reporter.status("Connecting to server..."):
-            remote.connect()
-        
-        # Read recent logs
+        # Check if we're in local mode (no server host specified)
+        server_host = config_data.get('server', {}).get('host', '')
+        log_path = config_data['app']['log_path']
         max_lines = config_data['monitoring']['max_log_lines']
-        with reporter.status("Reading application logs..."):
-            log_data = remote.read_log_file(
-                config_data['app']['log_path'], 
-                lines=max_lines
-            )
+        
+        if not server_host or server_host == 'localhost':
+            # LOCAL MODE - Read log file directly
+            with reporter.status("Reading local log file..."):
+                try:
+                    with open(log_path, 'r') as f:
+                        lines = f.readlines()
+                    # Get last N lines
+                    log_data = [line.strip() for line in lines[-max_lines:] if line.strip()]
+                except FileNotFoundError:
+                    raise ConnectionError(f"Log file not found: {log_path}")
+                except Exception as e:
+                    raise ConnectionError(f"Failed to read log file: {e}")
+        else:
+            # REMOTE MODE - Use SSH
+            remote = RemoteConnection(config_data['server'])
+            
+            with reporter.status("Connecting to server..."):
+                remote.connect()
+            
+            with reporter.status("Reading application logs..."):
+                log_data = remote.read_log_file(log_path, lines=max_lines)
+            
+            # Cleanup connection
+            remote.disconnect()
         
         # Parse logs
         with reporter.status("Parsing log entries..."):
@@ -245,9 +209,6 @@ def check(verbose):
         
         # Generate report
         reporter.show_health_report(analysis, parsed_logs)
-        
-        # Cleanup
-        remote.disconnect()
         
     except ConfigError as e:
         console.print(f"❌ [red]Configuration error: {e}[/red]")
