@@ -48,7 +48,8 @@ def main(ctx):
 
 [yellow]Commands:[/yellow]
   init      Interactive configuration setup
-  check     Instant health check with AI insights  
+  check     Instant health check with AI insights
+  chat      Interactive chat with AI about your logs  
   monitor   Continuous monitoring (coming soon)
   config    Show current configuration
         """, title="Welcome", border_style="blue"))
@@ -72,55 +73,77 @@ Let's get you monitoring in 30 seconds!
         else:
             console.print("\n✅ [green]Found Gemini API key in environment[/green]")
         
-        # 2. Auto-detect Django logs
-        console.print("\n[cyan]Now let's find your Django logs...[/cyan]")
+        # 2. Project name
+        console.print("\n[cyan]What's your project name?[/cyan]")
+        default_project = os.path.basename(os.getcwd())
+        if default_project in ['root', 'home', '']:
+            default_project = "My Django App"
+        project_name = click.prompt("📱 Project name", default=default_project)
         
-        # Common Django log locations
-        possible_paths = [
+        # 3. Environment dropdown
+        console.print("\n[cyan]What environment is this?[/cyan]")
+        environments = ["production", "staging", "development"]
+        for i, env in enumerate(environments, 1):
+            console.print(f"  {i}. {env}")
+        env_choice = click.prompt("🌍 Environment (1-3)", type=int, default=1) - 1
+        environment = environments[env_choice]
+        
+        # 4. Log path with auto-detection and Docker detection
+        console.print("\n[cyan]Where are your Django logs?[/cyan]")
+        
+        # Check if Docker is available and find containers
+        docker_containers = []
+        try:
+            import subprocess
+            result = subprocess.run(['docker', 'ps', '--format', '{{.Names}}'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                containers = [name.strip() for name in result.stdout.split('\n') if name.strip()]
+                # Look for common Django container patterns
+                django_containers = [c for c in containers if any(keyword in c.lower() 
+                    for keyword in ['web', 'django', 'app', 'backend', 'api'])]
+                docker_containers = [f"docker:{c}" for c in django_containers[:3]]  # Top 3
+        except:
+            pass
+        
+        possible_paths = docker_containers + [
             "/var/log/django/django.log",
-            "/var/log/django/error.log", 
-            "/app/logs/django.log",
+            "/app/logs/django.log", 
             "/app/logs/error.log",
-            "./logs/django.log",
-            "./django.log",
-            "/home/ubuntu/logs/django.log",
-            "/opt/django/logs/django.log",
-            "./test_logs.txt"  # Our test file
+            "./logs/django.log"
         ]
         
         found_logs = []
         for path in possible_paths:
-            if os.path.exists(path):
+            if path.startswith('docker:') or os.path.exists(path):
                 found_logs.append(path)
         
+        if docker_containers:
+            console.print("🐳 [blue]Docker containers detected![/blue] Recommended for containerized apps:")
+            for container in docker_containers[:2]:
+                console.print(f"   • {container}")
+            console.print("")
+        
         if found_logs:
-            console.print(f"\n🎯 [green]Found Django logs![/green]")
+            console.print("🎯 [green]Suggested log paths:[/green]")
             for i, path in enumerate(found_logs, 1):
                 console.print(f"  {i}. {path}")
+            console.print(f"  {len(found_logs) + 1}. Custom path")
             
-            if len(found_logs) == 1:
-                log_path = found_logs[0]
-                console.print(f"✅ Using: {log_path}")
-            else:
-                choice = click.prompt(f"📁 Which log file? (1-{len(found_logs)})", type=int) - 1
+            choice = click.prompt(f"📁 Log path (1-{len(found_logs) + 1})", type=int) - 1
+            if choice < len(found_logs):
                 log_path = found_logs[choice]
+            else:
+                log_path = click.prompt("📁 Enter custom log path")
         else:
-            console.print("🔍 [yellow]No logs found in common locations[/yellow]")
             log_path = click.prompt("📁 Django log file path")
         
-        # 3. Auto-detect app name from directory or ask
-        app_name = os.path.basename(os.getcwd())
-        if not app_name or app_name in ['root', 'home']:
-            app_name = click.prompt("🏷️  App name", default="Django App")
-        else:
-            console.print(f"📱 App name: {app_name}")
-        
-        # Build minimal config
+        # Build simplified config
         config_data = {
             'app': {
-                'name': app_name,
+                'name': project_name,
                 'log_path': log_path,
-                'environment': 'production'
+                'environment': environment
             },
             'ai': {
                 'gemini_api_key': gemini_key
@@ -250,6 +273,95 @@ def check(verbose):
         sys.exit(1)
 
 @main.command()
+def chat():
+    """💬 Interactive chat with AI about your logs"""
+    try:
+        # Load configuration
+        config = Config()
+        config_data = config.load_with_env_fallback()
+        
+        if not config_data['ai']['gemini_api_key']:
+            console.print("❌ [red]Gemini API key not found![/red]")
+            console.print("💡 Set [cyan]GEMINI_API_KEY[/cyan] environment variable or run [cyan]fend-sentry init[/cyan]")
+            sys.exit(1)
+        
+        # Initialize components
+        parser = LogParser()
+        analyzer = AIAnalyzer(config_data['ai']['gemini_api_key'])
+        
+        console.print(Panel.fit(f"""
+[bold blue]💬 Fend Sentry Chat[/bold blue]
+
+Chat with AI about your [cyan]{config_data['app']['name']}[/cyan] logs.
+Type 'exit' or 'quit' to end the session.
+
+[dim]Examples:[/dim]
+• "What were the recent errors?"
+• "Explain the database warnings"  
+• "Are there any performance issues?"
+        """, border_style="blue"))
+        
+        # Get recent logs once
+        server_host = config_data.get('server', {}).get('host', '')
+        log_path = config_data['app']['log_path']
+        max_lines = min(config_data['monitoring']['max_log_lines'], 500)  # Limit for chat
+        
+        with console.status("Loading recent logs..."):
+            if not server_host or server_host == 'localhost':
+                # LOCAL MODE
+                try:
+                    if log_path.startswith('docker:'):
+                        import subprocess
+                        container_name = log_path.replace('docker:', '')
+                        result = subprocess.run(
+                            ['docker', 'logs', '--tail', str(max_lines), container_name],
+                            capture_output=True, text=True, timeout=30
+                        )
+                        combined_output = result.stdout + result.stderr
+                        log_data = [line.strip() for line in combined_output.split('\n') if line.strip()]
+                    else:
+                        with open(log_path, 'r') as f:
+                            lines = f.readlines()
+                        log_data = [line.strip() for line in lines[-max_lines:] if line.strip()]
+                except Exception as e:
+                    console.print(f"❌ [red]Failed to load logs: {e}[/red]")
+                    sys.exit(1)
+            else:
+                # REMOTE MODE
+                remote = RemoteConnection(config_data['server'])
+                remote.connect()
+                log_data = remote.read_log_file(log_path, lines=max_lines)
+                remote.disconnect()
+        
+        parsed_logs = parser.parse_logs(log_data)
+        console.print(f"✅ Loaded {len(log_data)} log entries")
+        
+        # Chat loop
+        while True:
+            try:
+                question = click.prompt("\n[cyan]You[/cyan]", prompt_suffix="")
+                
+                if question.lower() in ['exit', 'quit', 'bye']:
+                    console.print("👋 [green]Goodbye![/green]")
+                    break
+                
+                with console.status("🤔 AI thinking..."):
+                    # Create a chat-focused prompt
+                    response = analyzer.chat_about_logs(parsed_logs, question, config_data['app']['name'])
+                
+                console.print(f"\n[yellow]🤖 AI[/yellow]: {response}")
+                
+            except (KeyboardInterrupt, click.Abort):
+                console.print("\n👋 [green]Goodbye![/green]")
+                break
+            except Exception as e:
+                console.print(f"\n❌ [red]Error: {e}[/red]")
+                
+    except Exception as e:
+        console.print(f"❌ [red]Chat failed: {e}[/red]")
+        sys.exit(1)
+
+@main.command()
 def monitor():
     """🔄 Continuous monitoring (coming soon)"""
     console.print("🚧 [yellow]Continuous monitoring is coming in v0.2![/yellow]")
@@ -268,20 +380,10 @@ def config(show_secrets):
         if api_key and not show_secrets:
             api_key = api_key[:8] + "..." + api_key[-4:] if len(api_key) > 12 else "***"
         
-        webhook_url = config_data['alerts']['webhook_url']
-        if webhook_url and not show_secrets:
-            webhook_url = webhook_url[:20] + "..." if len(webhook_url) > 20 else "***"
-        
         console.print(Panel.fit(f"""
 [bold blue]⚙️ Current Configuration[/bold blue]
 
-[yellow]Server:[/yellow]
-  Host: {config_data['server']['host']}
-  Port: {config_data['server']['port']}
-  User: {config_data['server']['username']}
-  Auth: {'SSH Key' if config_data['server'].get('private_key_path') else 'Password'}
-
-[yellow]Application:[/yellow]
+[yellow]Project:[/yellow]
   Name: {config_data['app']['name']}
   Environment: {config_data['app']['environment']}
   Log Path: {config_data['app']['log_path']}
@@ -292,11 +394,6 @@ def config(show_secrets):
 
 [yellow]AI:[/yellow]
   Gemini API: {'✅ ' + api_key if api_key else '❌ Missing'}
-
-[yellow]Alerts:[/yellow]
-  Email: {config_data['alerts']['email'] or 'Not configured'}
-  Webhook: {webhook_url or 'Not configured'}
-  Enabled: {'✅ Yes' if config_data['alerts']['enabled'] else '❌ No'}
 
 [dim]🔍 Use [cyan]--show-secrets[/cyan] to show masked values[/dim]
 [dim]🔧 Run [cyan]fend-sentry init[/cyan] to reconfigure[/dim]

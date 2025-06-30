@@ -306,6 +306,43 @@ Respond ONLY with valid JSON, no additional text."""
             'analysis_coverage': f"{parsed_logs.get('total_entries', 0)} log entries analyzed"
         }
     
+    def chat_about_logs(self, parsed_logs: Dict[str, Any], question: str, app_name: str) -> str:
+        """Interactive chat about logs
+        
+        Args:
+            parsed_logs: Dictionary from LogParser.parse_logs()
+            question: User's question about the logs
+            app_name: Name of the Django application
+            
+        Returns:
+            AI response to the question
+        """
+        try:
+            # Create log context for the question
+            log_summary = self._create_log_summary(parsed_logs)
+            
+            prompt = f"""You are an expert Django application monitoring assistant. Answer the user's question about the logs from "{app_name}".
+
+LOG CONTEXT:
+{json.dumps(log_summary, indent=2)}
+
+USER QUESTION: {question}
+
+Please provide a helpful, conversational response that:
+1. Directly answers the user's question
+2. References specific log entries when relevant
+3. Explains technical issues in clear terms
+4. Suggests actionable next steps when appropriate
+5. Is concise but informative
+
+Respond in a natural, helpful tone as if you're a senior developer helping a colleague."""
+            
+            response = self.model.generate_content(prompt)
+            return response.text
+            
+        except Exception as e:
+            return f"Sorry, I encountered an error: {e}. You can try asking your question differently."
+
     def test_connection(self) -> bool:
         """Test if Gemini API is accessible"""
         try:
