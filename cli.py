@@ -341,7 +341,8 @@ Type 'exit' or 'quit' to end the session.
             try:
                 question = click.prompt("\n[bold blue]>[/bold blue]", prompt_suffix=" ")
                 
-                if question.lower() in ['exit', 'quit', 'bye']:
+                # Better exit detection
+                if any(word in question.lower() for word in ['exit', 'quit', 'bye', 'done', 'thanks', 'goodbye']):
                     console.print("👋 [green]Goodbye![/green]")
                     break
                 

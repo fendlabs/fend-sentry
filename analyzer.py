@@ -331,21 +331,21 @@ Respond ONLY with valid JSON, no additional text."""
 RAW LOG ENTRIES (most recent):
 {chr(10).join(recent_logs)}"""
             
-            prompt = f"""You are a senior systems monitoring engineer analyzing logs from "{app_name}".
+            prompt = f"""You're a DevOps engineer helping debug "{app_name}".
 
-PARSED DATA:
+LOGS:
 {json.dumps(log_summary, indent=2)}{raw_log_context}
 
-QUESTION: {question}
+USER ASKS: {question}
 
-Respond as an expert engineer would - concise, technical, and actionable. Rules:
-- Keep responses under 3 sentences unless asked for details
-- Reference specific log entries when relevant  
-- Give direct answers, not explanations
-- Suggest specific fixes, not general advice
-- Use technical terms appropriately
+Reply like you're chatting with a colleague:
+- 1-2 sentences max unless they ask for details
+- Don't repeat info you've already mentioned
+- If logs look normal, just say so
+- If there are issues, be specific about what to fix
+- Skip obvious stuff (like "404s are normal for missing files")
 
-Answer the question directly."""
+Quick, helpful response:"""
             
             response = self.model.generate_content(prompt)
             return response.text
