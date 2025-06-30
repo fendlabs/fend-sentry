@@ -88,6 +88,21 @@ Let's get you monitoring in 30 seconds!
         env_choice = click.prompt("🌍 Environment (1-3)", type=int, default=1) - 1
         environment = environments[env_choice]
         
+        # 3.5. AI Model selection
+        console.print("\n[cyan]Which Gemini model to use?[/cyan]")
+        console.print("[dim]Free tier rate limits shown below:[/dim]")
+        models = [
+            ("gemini-2.5-flash-lite-preview", "2.5 Flash-Lite - Most efficient (15 RPM, 1000 RPD) [FREE]"),
+            ("gemini-2.5-flash", "2.5 Flash - Adaptive thinking (10 RPM, 250 RPD) [FREE]"),  
+            ("gemini-2.5-pro", "2.5 Pro - Best reasoning (5 RPM, 100 RPD) [FREE]"),
+            ("gemini-1.5-flash", "1.5 Flash - Reliable fallback [PAID TIER ONLY]"),
+            ("gemini-1.5-pro", "1.5 Pro - Legacy option [PAID TIER ONLY]")
+        ]
+        for i, (model, desc) in enumerate(models, 1):
+            console.print(f"  {i}. {desc}")
+        model_choice = click.prompt("🤖 AI Model (1-5)", type=int, default=1) - 1
+        selected_model = models[model_choice][0]
+        
         # 4. Log path with auto-detection and Docker detection
         console.print("\n[cyan]Where are your Django logs?[/cyan]")
         
@@ -146,7 +161,8 @@ Let's get you monitoring in 30 seconds!
                 'environment': environment
             },
             'ai': {
-                'gemini_api_key': gemini_key
+                'gemini_api_key': gemini_key,
+                'model': selected_model
             },
             'monitoring': {
                 'check_interval': 300,
@@ -186,7 +202,8 @@ def check(verbose):
         # Initialize components
         reporter = HealthReporter(console, verbose=verbose)
         parser = LogParser()
-        analyzer = AIAnalyzer(config_data['ai']['gemini_api_key'])
+        ai_model = config_data['ai'].get('model', 'gemini-2.5-flash-lite-preview')
+        analyzer = AIAnalyzer(config_data['ai']['gemini_api_key'], ai_model)
         
         # Show startup with environment info
         app_display = f"{config_data['app']['name']} ({config_data['app']['environment']})"
@@ -287,7 +304,8 @@ def chat():
         
         # Initialize components
         parser = LogParser()
-        analyzer = AIAnalyzer(config_data['ai']['gemini_api_key'])
+        ai_model = config_data['ai'].get('model', 'gemini-2.5-flash-lite-preview')
+        analyzer = AIAnalyzer(config_data['ai']['gemini_api_key'], ai_model)
         
         console.print(Panel.fit(f"""
 [bold blue]💬 Fend Sentry Chat[/bold blue]
@@ -395,6 +413,7 @@ def config(show_secrets):
 
 [yellow]AI:[/yellow]
   Gemini API: {'✅ ' + api_key if api_key else '❌ Missing'}
+  Model: {config_data['ai'].get('model', 'gemini-2.5-flash-lite-preview')}
 
 [dim]🔍 Use [cyan]--show-secrets[/cyan] to show masked values[/dim]
 [dim]🔧 Run [cyan]fend-sentry init[/cyan] to reconfigure[/dim]

@@ -28,18 +28,20 @@ class AnalysisResult:
 class AIAnalyzer:
     """AI-powered log analyzer using Gemini"""
     
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model_name: str = 'gemini-2.5-flash-lite-preview'):
         """Initialize AI analyzer
         
         Args:
             api_key: Google Gemini API key
+            model_name: Gemini model to use
         """
         self.api_key = api_key
+        self.model_name = model_name
         genai.configure(api_key=api_key)
         
-        # Use Gemini 1.5 Flash for fast, efficient analysis
+        # Use configured Gemini model
         self.model = genai.GenerativeModel(
-            'gemini-1.5-flash-latest',
+            model_name,
             safety_settings={
                 HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
                 HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
