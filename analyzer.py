@@ -321,21 +321,21 @@ Respond ONLY with valid JSON, no additional text."""
             # Create log context for the question
             log_summary = self._create_log_summary(parsed_logs)
             
-            prompt = f"""You are an expert Django application monitoring assistant. Answer the user's question about the logs from "{app_name}".
+            prompt = f"""You are a senior systems monitoring engineer analyzing logs from "{app_name}".
 
-LOG CONTEXT:
+LOG DATA:
 {json.dumps(log_summary, indent=2)}
 
-USER QUESTION: {question}
+QUESTION: {question}
 
-Please provide a helpful, conversational response that:
-1. Directly answers the user's question
-2. References specific log entries when relevant
-3. Explains technical issues in clear terms
-4. Suggests actionable next steps when appropriate
-5. Is concise but informative
+Respond as an expert engineer would - concise, technical, and actionable. Rules:
+- Keep responses under 3 sentences unless asked for details
+- Reference specific log data when relevant  
+- Give direct answers, not explanations
+- Suggest specific fixes, not general advice
+- Use technical terms appropriately
 
-Respond in a natural, helpful tone as if you're a senior developer helping a colleague."""
+Answer the question directly."""
             
             response = self.model.generate_content(prompt)
             return response.text

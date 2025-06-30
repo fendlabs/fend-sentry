@@ -339,17 +339,17 @@ Type 'exit' or 'quit' to end the session.
         # Chat loop
         while True:
             try:
-                question = click.prompt("\n[cyan]You[/cyan]", prompt_suffix="")
+                question = click.prompt("\n[bold blue]>[/bold blue]", prompt_suffix=" ")
                 
                 if question.lower() in ['exit', 'quit', 'bye']:
                     console.print("👋 [green]Goodbye![/green]")
                     break
                 
-                with console.status("🤔 AI thinking..."):
+                with console.status("🤔 Analyzing..."):
                     # Create a chat-focused prompt
                     response = analyzer.chat_about_logs(parsed_logs, question, config_data['app']['name'])
                 
-                console.print(f"\n[yellow]🤖 AI[/yellow]: {response}")
+                console.print(f"\n[dim]💬[/dim] {response}")
                 
             except (KeyboardInterrupt, click.Abort):
                 console.print("\n👋 [green]Goodbye![/green]")
