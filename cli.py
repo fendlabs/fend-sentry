@@ -175,17 +175,34 @@ def check(verbose):
         max_lines = config_data['monitoring']['max_log_lines']
         
         if not server_host or server_host == 'localhost':
-            # LOCAL MODE - Read log file directly
-            with reporter.status("Reading local log file..."):
+            # LOCAL MODE - Read log file directly or Docker logs
+            with reporter.status("Reading logs..."):
                 try:
-                    with open(log_path, 'r') as f:
-                        lines = f.readlines()
-                    # Get last N lines
-                    log_data = [line.strip() for line in lines[-max_lines:] if line.strip()]
+                    if log_path.startswith('docker:'):
+                        # Docker logs
+                        import subprocess
+                        container_name = log_path.replace('docker:', '')
+                        result = subprocess.run(
+                            ['docker', 'logs', '--tail', str(max_lines), container_name],
+                            capture_output=True,
+                            text=True,
+                            timeout=30
+                        )
+                        if result.returncode != 0:
+                            raise ConnectionError(f"Docker logs failed: {result.stderr}")
+                        log_data = [line.strip() for line in result.stdout.split('\n') if line.strip()]
+                    else:
+                        # Regular file
+                        with open(log_path, 'r') as f:
+                            lines = f.readlines()
+                        # Get last N lines
+                        log_data = [line.strip() for line in lines[-max_lines:] if line.strip()]
                 except FileNotFoundError:
                     raise ConnectionError(f"Log file not found: {log_path}")
+                except subprocess.TimeoutExpired:
+                    raise ConnectionError("Docker logs command timed out")
                 except Exception as e:
-                    raise ConnectionError(f"Failed to read log file: {e}")
+                    raise ConnectionError(f"Failed to read logs: {e}")
         else:
             # REMOTE MODE - Use SSH
             remote = RemoteConnection(config_data['server'])
