@@ -92,7 +92,7 @@ class HealthReporter:
         
         # Verbose details
         if self.verbose:
-            self._show_verbose_details(parsed_logs)
+            self._show_verbose_details(analysis, parsed_logs)
         
         # Footer
         self._show_footer()
@@ -248,7 +248,7 @@ class HealthReporter:
         ))
         self.console.print()
     
-    def _show_verbose_details(self, parsed_logs: Dict[str, Any]):
+    def _show_verbose_details(self, analysis: AnalysisResult, parsed_logs: Dict[str, Any]):
         """Show detailed verbose information"""
         if not self.verbose:
             return
@@ -280,14 +280,13 @@ class HealthReporter:
                 padding=(0, 1)
             ))
         
-        # Trends detail
-        trends = getattr(analysis, 'trends', {})
-        if trends:
+        # Trends detail  
+        if hasattr(analysis, 'trends') and analysis.trends:
             trend_table = Table(show_header=False, box=box.SIMPLE)
             trend_table.add_column("Metric", style="cyan")
             trend_table.add_column("Value", style="bold")
             
-            for key, value in trends.items():
+            for key, value in analysis.trends.items():
                 trend_table.add_row(key.replace('_', ' ').title(), str(value))
             
             self.console.print(Panel(
