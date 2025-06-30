@@ -31,7 +31,7 @@ setup(
     long_description=read_readme(),
     long_description_content_type="text/markdown",
     author="Fend Labs",
-    author_email="labs@fend.ai",
+    author_email="engineering@thefend.com",
     url="https://github.com/fendlabs/fend-sentry",  # Will be updated when repo is created
     project_urls={
         "Bug Tracker": "https://github.com/fendlabs/fend-sentry/issues",
