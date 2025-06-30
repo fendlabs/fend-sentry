@@ -190,7 +190,13 @@ def check(verbose):
                         )
                         if result.returncode != 0:
                             raise ConnectionError(f"Docker logs failed: {result.stderr}")
-                        log_data = [line.strip() for line in result.stdout.split('\n') if line.strip()]
+                        
+                        # Docker logs can go to either stdout or stderr, combine both
+                        combined_output = result.stdout + result.stderr
+                        log_data = [line.strip() for line in combined_output.split('\n') if line.strip()]
+                        
+                        if not log_data:
+                            raise ConnectionError(f"No logs found for container: {container_name}")
                     else:
                         # Regular file
                         with open(log_path, 'r') as f:
