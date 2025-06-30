@@ -37,9 +37,9 @@ class AIAnalyzer:
         self.api_key = api_key
         genai.configure(api_key=api_key)
         
-        # Use Gemini 1.5 Flash for fast, efficient analysis
+        # Use Gemini 1.5 Pro for better conversational understanding
         self.model = genai.GenerativeModel(
-            'gemini-1.5-flash-latest',
+            'gemini-1.5-pro-latest',
             safety_settings={
                 HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
                 HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
