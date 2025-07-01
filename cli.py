@@ -92,11 +92,11 @@ Let's get you monitoring in 30 seconds!
         console.print("\n[cyan]Which Gemini model to use?[/cyan]")
         console.print("[dim]Free tier rate limits shown below:[/dim]")
         models = [
-            ("gemini-2.5-flash-lite-preview", "2.5 Flash-Lite - Most efficient (15 RPM, 1000 RPD) [FREE]"),
-            ("gemini-2.5-flash", "2.5 Flash - Adaptive thinking (10 RPM, 250 RPD) [FREE]"),  
-            ("gemini-2.5-pro", "2.5 Pro - Best reasoning (5 RPM, 100 RPD) [FREE]"),
-            ("gemini-1.5-flash", "1.5 Flash - Reliable fallback [PAID TIER ONLY]"),
-            ("gemini-1.5-pro", "1.5 Pro - Legacy option [PAID TIER ONLY]")
+            ("gemini-2.5-flash", "2.5 Flash - Latest, adaptive thinking (10 RPM) [RECOMMENDED]"),
+            ("gemini-2.5-flash-lite-preview-06-17", "2.5 Flash-Lite - Most efficient (15 RPM, 1000 RPD)"),
+            ("gemini-2.5-pro", "2.5 Pro - Best reasoning (5 RPM, 100 RPD)"),
+            ("gemini-1.5-flash", "1.5 Flash - Reliable fallback (15 RPM)"),
+            ("gemini-1.5-pro", "1.5 Pro - Complex reasoning (2 RPM)")
         ]
         for i, (model, desc) in enumerate(models, 1):
             console.print(f"  {i}. {desc}")
@@ -202,7 +202,7 @@ def check(verbose):
         # Initialize components
         reporter = HealthReporter(console, verbose=verbose)
         parser = LogParser()
-        ai_model = config_data['ai'].get('model', 'gemini-2.5-flash-lite-preview')
+        ai_model = config_data['ai'].get('model', 'gemini-2.5-flash')
         analyzer = AIAnalyzer(config_data['ai']['gemini_api_key'], ai_model)
         
         # Show startup with environment info
@@ -304,7 +304,7 @@ def chat():
         
         # Initialize components
         parser = LogParser()
-        ai_model = config_data['ai'].get('model', 'gemini-2.5-flash-lite-preview')
+        ai_model = config_data['ai'].get('model', 'gemini-2.5-flash')
         analyzer = AIAnalyzer(config_data['ai']['gemini_api_key'], ai_model)
         
         console.print(Panel.fit(f"""
@@ -413,7 +413,7 @@ def config(show_secrets):
 
 [yellow]AI:[/yellow]
   Gemini API: {'✅ ' + api_key if api_key else '❌ Missing'}
-  Model: {config_data['ai'].get('model', 'gemini-2.5-flash-lite-preview')}
+  Model: {config_data['ai'].get('model', 'gemini-2.5-flash')}
 
 [dim]🔍 Use [cyan]--show-secrets[/cyan] to show masked values[/dim]
 [dim]🔧 Run [cyan]fend-sentry init[/cyan] to reconfigure[/dim]

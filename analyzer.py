@@ -28,7 +28,7 @@ class AnalysisResult:
 class AIAnalyzer:
     """AI-powered log analyzer using Gemini"""
     
-    def __init__(self, api_key: str, model_name: str = 'gemini-2.5-flash-lite-preview'):
+    def __init__(self, api_key: str, model_name: str = 'gemini-2.5-flash'):
         """Initialize AI analyzer
         
         Args:
